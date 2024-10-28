@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Lookup</title>
+    <link href="https://fonts.googleapis.com/css2?family=Raleway&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js/dist/fuse.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <style>
+        body {
+            font-family: 'Raleway', sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #ffffff;
+        }
+        .autocomplete-suggestion, .result-item {
+            padding: 10px;
+            cursor: pointer;
+            background-color: #fff;
+            margin-top: 5px;
+            width: 90%;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        .autocomplete-suggestion:hover, .result-item:hover {
+            background-color: #f0f0f0;
+        }
+        #header {
+            width: 100%;
+            background-color: #FFFFFF;
+            padding: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        #header img {
+            height: 100px;
+        }
+        h1, h2, h3, h4, p {
+            color: #000000;
+        }
+        h4 {
+            font-weight: normal;
+        }
+        p {
+            font-size: 60%;
+        }
+        select, button {
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        select {
+            border: 1px solid #ddd;
+        }
+        button {
+            background-color: #5D3FD3;
+            color: #fff;
+            border: none;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #4c32cc;
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <img src="https://www.trustimpact.com/wp-content/uploads/2020/09/trust-impact-logo.png" alt="Trust Impact Logo"> 
+    </div>
+
+    <input type="text" id="job-search-input" placeholder="Search job titles...">
+    <button id="search-btn">Look Up</button>
+    <button id="reset-btn">Reset</button>
+    <div id="search-results"></div>
+    <div id="job-details">
+        <button id="back-btn" style="display:none;">Back</button>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            let fetchedData = [];
+            let fuse;
+
+            // Fetching the JSON data from the provided URL
+            fetch('https://raw.githubusercontent.com/TrustImpact/JobsLookUp/refs/heads/main/SOC2020_with_GreenSOC_and_NS_SEC.json')
+            .then(response => response.json())
+            .then(data => {
+                fetchedData = data;
+                const options = {
+                    includeScore: true,
+                    keys: ['Natural Word Order + Sub Unit Group Description'] // Match field name exactly
+                };
+                fuse = new Fuse(fetchedData, options);
+            })
+            .catch(error => {
+                console.error('Error loading the data:', error);
+                $('#job-details').html('<p>Error loading the job data. Please try again later.</p>'); // User-friendly error message
+            });
+
+            // Search functionality triggered by search button
+            $('#search-btn').on('click', function() {
+                const searchValue = $('#job-search-input').val().trim();
+                if (searchValue.length > 3) { // Search after 3 characters
+                    const results = fuse.search(searchValue);
+                    if (results.length > 0) {
+                        displayResults(results);
+                    } else {
+                        $('#search-results').html('<p>No matching jobs found.</p>'); // If no results found
+                    }
+                } else {
+                    $('#search-results').empty();
+                }
+            });
+
+            // Function to display search results
+            function displayResults(results) {
+                const searchResultsContainer = $('#search-results');
+                searchResultsContainer.empty();
+
+                results.forEach(result => {
+                    const item = $('<div>').addClass('result-item').text(result.item['Natural Word Order + Sub Unit Group Description']);
+                    item.on('click', function() {
+                        displayJobDetails(result.item);
+                    });
+                    searchResultsContainer.append(item);
+                });
+            }
+
+            // Function to display job details when a result is clicked
+            function displayJobDetails(job) {
+                $('#search-results').hide(); // Hide the search results
+
+                $('#job-details').html(`
+                    <h4>Job Title: ${job["INDEXOCC NATURAL WORD ORDER"]}</h4>
+                    <h4>SOC Code: ${job["SOC 2020"]}</h4> 
+                    <h4>SDS Green Job: ${job["Green or not?"]}</h4>
+                    <h4>SDS Green Job Category: ${job["Green category"]}</h4>
+                    <h4>Simplified National Statistics Socio-economic classification (NS-SEC): ${job["ssec"]}</h4>
+                    <button id="back-btn">Back</button>
+                `).show(); // Show the job details
+
+                // Bind functionality to the 'Back' button
+                $('#back-btn').on('click', function() {
+                    $('#job-details').hide(); // Hide job details
+                    $('#search-results').show(); // Show the search results
+                });
+            }
+
+            // Reset the UI to its initial state
+            function resetUI() {
+                $('#job-search-input').val(''); // Clear the search input
+                $('#search-results').empty().show(); // Clear and show search results
+                $('#job-details').empty().hide(); // Clear and hide job details
+            }
+
+            // Bind resetUI to the reset button
+            $('#reset-btn').on('click', function() {
+                resetUI();
+            });
+        });
+    </script>
+</body>
+</html>
